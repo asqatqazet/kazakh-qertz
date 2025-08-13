@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>org.sil.ukelele.keyboardlayout.unsavedukeleledocument</string>
+	<string>org.sil.ukelele.keyboardlayout.Kazakh-QWERTZ</string>
 	<key>CFBundleName</key>
-	<string>Unsaved Ukelele Document</string>
+	<string>Kazakh-QWERTZ</string>
 	<key>CFBundleVersion</key>
 	<string></string>
 	<key>KLInfo_U.S. International – PC copy</key>
@@ -15,7 +15,7 @@
 		<key>TISIconIsTemplate</key>
 		<false/>
 		<key>TISInputSourceID</key>
-		<string>org.sil.ukelele.keyboardlayout.unsavedukeleledocument.u.s.international–pccopy</string>
+		<string>org.sil.ukelele.keyboardlayout.Kazakh-QWERTZ</string>
 		<key>TISIntendedLanguage</key>
 		<string>en</string>
 	</dict>
