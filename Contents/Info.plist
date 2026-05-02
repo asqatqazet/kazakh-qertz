@@ -3,21 +3,27 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>org.sil.ukelele.keyboardlayout.Kazakh-QWERTZ</string>
+	<string>com.asqatqazet.keyboardlayout.kazakh-qwertz</string>
 	<key>CFBundleName</key>
 	<string>Kazakh-QWERTZ</string>
 	<key>CFBundleVersion</key>
-	<string></string>
-	<key>KLInfo_U.S. International – PC copy</key>
+	<string>1.0.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>KLInfo_Kazakh-QWERTZ</key>
 	<dict>
 		<key>TICapsLockLanguageSwitchCapable</key>
 		<false/>
 		<key>TISIconIsTemplate</key>
 		<false/>
 		<key>TISInputSourceID</key>
-		<string>org.sil.ukelele.keyboardlayout.Kazakh-QWERTZ</string>
+		<string>com.asqatqazet.keyboardlayout.kazakh-qwertz</string>
 		<key>TISIntendedLanguage</key>
-		<string>en</string>
+		<string>kk</string>
 	</dict>
 </dict>
 </plist>
