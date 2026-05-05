@@ -38,6 +38,13 @@ cd kazakh-qertz
 
 如有需要，再到 **系统设置 → 键盘 → 输入法** 中手动移除。
 
+## 通过 DMG 安装（无需终端）
+
+1. 从 [Releases 页面](https://github.com/asqatqazet/kazakh-qertz/releases) 下载 `Kazakh-QWERTZ-<版本>.dmg`。
+2. 双击 DMG。
+3. 双击 `Install.command`。首次运行时 macOS 可能会要求授权 —— 如被拦截，请到 *系统设置 → 隐私与安全性* 中允许。
+4. 注销并重新登录，然后在 *系统设置 → 键盘 → 输入法* 中添加该布局。
+
 ## 不使用 Git 安装
 
 从 [Releases 页面](https://github.com/asqatqazet/kazakh-qertz/releases) 下载最新的 zip 包，解压后将 `Kazakh-QWERTZ.bundle` 复制到 `~/Library/Keyboard Layouts/`。

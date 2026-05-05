@@ -4,31 +4,62 @@ on:
   push:
     tags:
       - 'v*'
+  # Manual trigger for testing without cutting a real tag.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label for artifact filenames (used only when no tag is present)'
+        required: false
+        default: 'manual'
 
 permissions:
   contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Run coverage test
         run: python3 tests/test_coverage.py
 
-      - name: Build bundle archive
+      - name: Compute version label
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "value=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ inputs.version || 'manual' }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build DMG
+        run: scripts/build-dmg.sh "${{ steps.ver.outputs.value }}"
+
+      - name: Build source zip
         run: |
           mkdir -p dist
           STAGE=$(mktemp -d)
           mkdir -p "$STAGE/Kazakh-QWERTZ.bundle"
           cp -R Contents "$STAGE/Kazakh-QWERTZ.bundle/"
-          cp install.sh uninstall.sh README.md LICENSE "$STAGE/"
-          cd "$STAGE"
-          zip -r "$GITHUB_WORKSPACE/dist/Kazakh-QWERTZ-${GITHUB_REF_NAME}.zip" .
+          cp install.sh uninstall.sh README.md README.kk.md README.zh.md LICENSE "$STAGE/"
+          (cd "$STAGE" && zip -r "$GITHUB_WORKSPACE/dist/Kazakh-QWERTZ-${{ steps.ver.outputs.value }}.zip" .)
 
-      - name: Create release
+      - name: List artifacts
+        run: ls -lh dist/
+
+      - name: Upload artifacts (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kazakh-QWERTZ-${{ steps.ver.outputs.value }}
+          path: dist/*
+
+      - name: Create release (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          files: |
+            dist/*.dmg
+            dist/*.zip
           generate_release_notes: true

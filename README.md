@@ -38,6 +38,13 @@ Then:
 
 Then remove it from **System Settings → Keyboard → Input Sources** if it still appears.
 
+## Install from DMG (no terminal)
+
+1. Download `Kazakh-QWERTZ-<version>.dmg` from the [Releases page](https://github.com/asqatqazet/kazakh-qertz/releases).
+2. Double-click the DMG.
+3. Double-click `Install.command`. macOS may ask you to allow it the first time — see *System Settings → Privacy & Security* if it's blocked.
+4. Log out and back in, then add the layout in *System Settings → Keyboard → Input Sources*.
+
 ## Manual install (without git)
 
 Download the latest release zip from the [Releases page](https://github.com/asqatqazet/kazakh-qertz/releases), unzip, and copy `Kazakh-QWERTZ.bundle` into `~/Library/Keyboard Layouts/`.

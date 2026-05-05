@@ -38,6 +38,13 @@ cd kazakh-qertz
 
 Қажет болса, **System Settings → Keyboard → Input Sources** ішінен қолмен өшіріңіз.
 
+## DMG арқылы орнату (терминалсыз)
+
+1. [Releases бетінен](https://github.com/asqatqazet/kazakh-qertz/releases) `Kazakh-QWERTZ-<нұсқа>.dmg` жүктеп алыңыз.
+2. DMG-ге екі рет басыңыз.
+3. `Install.command` файлын екі рет басыңыз. Алғашқы рет macOS рұқсат сұрауы мүмкін — қажет болса *System Settings → Privacy & Security* ішінен рұқсат беріңіз.
+4. Жүйеден шығып қайта кіріңіз, содан кейін *System Settings → Keyboard → Input Sources* ішінен қосыңыз.
+
 ## Git-сіз орнату
 
 [Releases бетінен](https://github.com/asqatqazet/kazakh-qertz/releases) соңғы zip-ті жүктеп алыңыз, ашыңыз және `Kazakh-QWERTZ.bundle` қалтасын `~/Library/Keyboard Layouts/` ішіне көшіріңіз.
