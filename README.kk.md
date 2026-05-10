@@ -25,10 +25,11 @@ cd kazakh-qertz
 ```
 
 Содан кейін:
-1. **Жүйеден шығып, қайта кіріңіз** (немесе Mac-ты қайта қосыңыз).
-2. **System Settings → Keyboard → Input Sources → Edit → +** ашыңыз.
-3. Сол жақтан **Kazakh**, оң жақтан **Kazakh-QWERTZ** таңдап, **Add** басыңыз.
-4. Меню жолағындағы тіл таңдағыштан ауысыңыз (немесе `⌃Space` арқылы).
+1. **System Settings → Keyboard → Input Sources → Edit → +** ашыңыз.
+2. Сол жақтан **Kazakh**, оң жақтан **Kazakh-QWERTZ** таңдап, **Add** басыңыз.
+3. Меню жолағындағы тіл таңдағыштан ауысыңыз (немесе `⌃Space` арқылы).
+
+Орнату скрипті `cfprefsd`-ді қайта іске қосады, сондықтан орналасу бірден көрінеді — **жүйеден шығу қажет емес**. Көрінбесе, бір рет жүйеден шығып қайта кіріңіз.
 
 ## Жою
 
@@ -43,7 +44,7 @@ cd kazakh-qertz
 1. [Releases бетінен](https://github.com/asqatqazet/kazakh-qertz/releases) `Kazakh-QWERTZ-<нұсқа>.dmg` жүктеп алыңыз.
 2. DMG-ге екі рет басыңыз.
 3. `Install.command` файлын екі рет басыңыз. Алғашқы рет macOS рұқсат сұрауы мүмкін — қажет болса *System Settings → Privacy & Security* ішінен рұқсат беріңіз.
-4. Жүйеден шығып қайта кіріңіз, содан кейін *System Settings → Keyboard → Input Sources* ішінен қосыңыз.
+4. *System Settings → Keyboard → Input Sources* ішінен қосыңыз. Көп жағдайда жүйеден шығудың қажеті жоқ — жоғарыдағы ескертуді қараңыз.
 
 ## Git-сіз орнату
 

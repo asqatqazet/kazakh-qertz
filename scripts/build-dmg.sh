@@ -45,13 +45,16 @@ mkdir -p "$DEST_DIR"
 rm -rf "$BUNDLE"
 cp -R "$SRC_DIR/Kazakh-QWERTZ.bundle" "$BUNDLE"
 
+# Make the layout visible without a logout: kick the per-user prefs daemon
+# so it rescans ~/Library/Keyboard Layouts. Auto-restarts immediately.
+killall cfprefsd 2>/dev/null || true
+
 osascript <<'OSA' || echo "Installed: $BUNDLE"
 display dialog "Kazakh-QWERTZ installed.
 
-Next:
-1. Log out and log back in (or restart).
-2. System Settings → Keyboard → Input Sources → Edit → +
-3. Pick Kazakh → Kazakh-QWERTZ → Add." buttons {"OK"} default button "OK" with title "Kazakh-QWERTZ"
+Open System Settings → Keyboard → Input Sources → Edit → + and pick Kazakh → Kazakh-QWERTZ → Add.
+
+If it doesn't appear, log out and back in once — that always works." buttons {"OK"} default button "OK" with title "Kazakh-QWERTZ"
 OSA
 CMD
 chmod +x "$STAGE/Install.command"

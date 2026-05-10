@@ -25,10 +25,11 @@ cd kazakh-qertz
 ```
 
 Then:
-1. **Log out and back in** (or restart your Mac) so macOS picks up the new bundle.
-2. Open **System Settings → Keyboard → Input Sources → Edit → +**.
-3. Pick **Kazakh** in the left list, then **Kazakh-QWERTZ** on the right, and click **Add**.
-4. Switch to it from the menu bar input-source picker (or with `⌃Space` / `⌃⌥Space` if configured).
+1. Open **System Settings → Keyboard → Input Sources → Edit → +**.
+2. Pick **Kazakh** in the left list, then **Kazakh-QWERTZ** on the right, and click **Add**.
+3. Switch to it from the menu bar input-source picker (or with `⌃Space` / `⌃⌥Space` if configured).
+
+The install script kicks `cfprefsd` so the layout shows up immediately — **no logout needed** in most cases. If it doesn't appear, log out and back in once; that always works.
 
 ## Uninstall
 
@@ -43,7 +44,7 @@ Then remove it from **System Settings → Keyboard → Input Sources** if it sti
 1. Download `Kazakh-QWERTZ-<version>.dmg` from the [Releases page](https://github.com/asqatqazet/kazakh-qertz/releases).
 2. Double-click the DMG.
 3. Double-click `Install.command`. macOS may ask you to allow it the first time — see *System Settings → Privacy & Security* if it's blocked.
-4. Log out and back in, then add the layout in *System Settings → Keyboard → Input Sources*.
+4. Add the layout in *System Settings → Keyboard → Input Sources*. No logout needed in most cases — see the note below.
 
 ## Manual install (without git)
 
