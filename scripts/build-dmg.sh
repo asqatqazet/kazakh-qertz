@@ -9,7 +9,7 @@
 # The DMG contains:
 #   - Kazakh-QWERTZ.bundle      (the keyboard layout itself)
 #   - Install.command           (double-click in Finder to install)
-#   - README.md, LICENSE
+#   - English, Kazakh, and Chinese READMEs, release notes, LICENSE
 #
 # Requires macOS (uses hdiutil). Run from any directory.
 
@@ -56,8 +56,8 @@ OSA
 CMD
 chmod +x "$STAGE/Install.command"
 
-cp "$ROOT/README.md" "$STAGE/"
-cp "$ROOT/LICENSE" "$STAGE/"
+cp "$ROOT/README.md" "$ROOT/README.kk.md" "$ROOT/README.zh.md" \
+    "$ROOT/RELEASE_NOTES.md" "$ROOT/LICENSE" "$STAGE/"
 
 mkdir -p "$DIST"
 rm -f "$DMG"

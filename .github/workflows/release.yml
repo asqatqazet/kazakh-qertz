@@ -42,8 +42,13 @@ jobs:
           STAGE=$(mktemp -d)
           mkdir -p "$STAGE/Kazakh-QWERTZ.bundle"
           cp -R Contents "$STAGE/Kazakh-QWERTZ.bundle/"
-          cp install.sh uninstall.sh README.md README.kk.md README.zh.md LICENSE "$STAGE/"
+          cp install.sh uninstall.sh README.md README.kk.md README.zh.md RELEASE_NOTES.md LICENSE "$STAGE/"
           (cd "$STAGE" && zip -r "$GITHUB_WORKSPACE/dist/Kazakh-QWERTZ-${{ steps.ver.outputs.value }}.zip" .)
+
+      - name: Verify DMG and generate checksums
+        run: |
+          hdiutil verify dist/*.dmg
+          (cd dist && shasum -a 256 *.dmg *.zip > SHA256SUMS)
 
       - name: List artifacts
         run: ls -lh dist/
@@ -62,4 +67,6 @@ jobs:
           files: |
             dist/*.dmg
             dist/*.zip
+            dist/SHA256SUMS
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
