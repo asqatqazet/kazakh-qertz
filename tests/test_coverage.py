@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import copy
 import itertools
+import plistlib
 import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
-KEYLAYOUT = Path(__file__).resolve().parent.parent / "Contents" / "Resources" / "Kazakh-QWERTZ.keylayout"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RELEASE_VERSION = "1.2.0"
 KAZAKH_LOWER = "аәбвгғдеёжзийкқлмнңоөпрстуұүфхһцчшщъыіьэюя"
 KAZAKH_UPPER = KAZAKH_LOWER.upper()
 
@@ -36,8 +38,8 @@ BASE_LETTERS = dict(zip(
 ))
 BASE = {key: BASE_LETTERS.get(key, key) for key in KEY_CODES}
 SHIFT_PUNCTUATION = dict(zip("1234567890-=,./", '!@#$%^&*()_+":?'))
-OPTION = {
-    **BASE, **dict(zip("FHCXEOWJBV", "фһцщэёючьъ")),
+OPTION_OVERRIDES = {
+    **dict(zip("FHCXEOWJBV", "фһцщэёючьъ")),
     "`": "`", "[": "[", "]": "]", ";": ";", "'": "'", "\\": "\\",
     ",": "«", ".": "…", "-": "–", "=": "≠", "3": "№", "4": "₸",
 }
@@ -57,6 +59,43 @@ ALL_MODIFIERS = tuple(
     for bits in itertools.product((False, True), repeat=len(MODIFIER_BITS))
 )
 JIS_TYPES = {18, 21, 22, 23, 30, 194, 197, 200, 201, 206, 207}
+HARDWARE_RANGES = {(0, 17), (18, 18), (21, 23), (30, 30), (194, 194), (197, 197), (200, 201), (206, 207)}
+
+
+@dataclass(frozen=True)
+class Variant:
+    slug: str
+    contents: Path
+    keyboard_id: int
+    base_overrides: dict
+    option_overrides: dict
+
+    @property
+    def name(self):
+        return f"Kazakh-{self.slug.upper()}"
+
+    @property
+    def source_id(self):
+        return f"com.asqatqazet.keyboardlayout.kazakh-{self.slug}"
+
+    @property
+    def keylayout(self):
+        return self.contents / "Resources" / f"{self.name}.keylayout"
+
+    @property
+    def base(self):
+        return {**BASE, **self.base_overrides}
+
+    @property
+    def option(self):
+        return {**self.base, **OPTION_OVERRIDES, **self.option_overrides}
+
+
+VARIANTS = (
+    Variant("qwertz", PROJECT_ROOT / "Contents", -2253, {}, {}),
+    Variant("qwerty", PROJECT_ROOT / "variants" / "qwerty" / "Contents", -2254,
+            {"Y": "й", "Z": "з", "V": "и", "`": "в"}, {"I": "и"}),
+)
 
 
 class LayoutError(ValueError):
@@ -253,10 +292,10 @@ class Keyboard:
         return self.effective_map((layout.map_set, self.select(layout, modifiers)))
 
 
-def expected_text(modifiers):
+def expected_text(modifiers, variant):
     shifted = bool(modifiers.intersection(("shift", "rightShift")))
     option = bool(modifiers.intersection(("option", "rightOption")))
-    expected = dict(OPTION if option else BASE)
+    expected = variant.option if option else variant.base
     if shifted or "caps" in modifiers:
         expected = {key: value.upper() if value in KAZAKH_LOWER else value for key, value in expected.items()}
     if shifted:
@@ -264,18 +303,22 @@ def expected_text(modifiers):
     return expected
 
 
-def check_layout(keyboard):
+def check_layout(keyboard, variant):
     require(len(KEY_CODES) == 47 and len(BASE_LETTERS) == 32, "Invalid test key-position fixture")
+    require(keyboard.root.get("name") == variant.name, f"Wrong keyboard name for {variant.name}")
+    require(int(keyboard.root.get("id")) == variant.keyboard_id, f"Wrong keyboard ID for {variant.name}")
+    require({(layout.first, layout.last) for layout in keyboard.layouts} == HARDWARE_RANGES,
+            f"{variant.name}: declared hardware ranges changed")
     for layout in keyboard.layouts:
         for modifiers in ALL_MODIFIERS:
             actual = keyboard.outputs(layout, modifiers)
-            label = f"{layout.label}, modifiers={','.join(sorted(modifiers)) or 'none'}"
+            label = f"{variant.name}, {layout.label}, modifiers={','.join(sorted(modifiers)) or 'none'}"
             if modifiers.intersection(("control", "rightControl")):
                 expected = {key: chr(ord(key.lower()) - 96) for key in KEY_CODES if key.isalpha()}
             elif "command" in modifiers:
                 expected = {key: key.lower() for key in KEY_CODES if key.isalpha()}
             else:
-                expected = expected_text(modifiers)
+                expected = expected_text(modifiers, variant)
             for key, value in expected.items():
                 require(actual.get(KEY_CODES[key]) == value,
                         f"{label}, physical {key}: expected {value!r}, got {actual.get(KEY_CODES[key])!r}")
@@ -286,7 +329,8 @@ def check_layout(keyboard):
                     option = bool(modifiers.intersection(("option", "rightOption")))
                     shift = bool(modifiers.intersection(("shift", "rightShift")))
                     upper = shift or "caps" in modifiers
-                    extras = {93: ("|" if shift else "\\") if option else ("Й" if upper else "й"),
+                    grave_letter = variant.base["`"]
+                    extras = {93: ("|" if shift else "\\") if option else (grave_letter.upper() if upper else grave_letter),
                               94: ("~" if shift else "`") if option else "_", 95: ",", 102: " ", 104: " "}
                     for code, value in extras.items():
                         require(actual.get(code) == value, f"{label}: JIS extra key {code} expected {value!r}, got {actual.get(code)!r}")
@@ -297,34 +341,57 @@ def check_layout(keyboard):
             ("Shift+Caps uppercase", frozenset({"shift", "caps"}), KAZAKH_UPPER),
         ):
             available = set()
+            # JIS may lack the ANSI grave key. Its extra yen-position key must
+            # independently provide the displaced letter for complete coverage.
+            physical_codes = set(KEY_CODES.values())
+            if layout.is_jis:
+                physical_codes.remove(KEY_CODES["`"])
+                physical_codes.add(93)
             for layer in (modifiers, modifiers | {"option"}):
                 outputs = keyboard.outputs(layout, layer)
-                available.update(outputs.get(code) for code in KEY_CODES.values())
+                available.update(outputs.get(code) for code in physical_codes)
             missing = set(alphabet) - available
-            require(not missing, f"{layout.label}: missing {name} letters {''.join(sorted(missing))}")
-        check_words(keyboard, layout)
+            require(not missing, f"{variant.name}, {layout.label}: missing {name} letters {''.join(sorted(missing))}")
+        check_words(keyboard, layout, variant)
 
 
-def check_words(keyboard, layout):
-    # Fixed strokes cover all ten Option letters and returning to the base layer.
+def check_words(keyboard, layout, variant):
+    # Fixed strokes cover Option letters, returning to the base layer, and the
+    # distinction between и and і. Variant fixtures remain explicit keystrokes.
     recipes = (
-        ("Қазақстан", "^H A Y A H S T A N"), ("қазақтың", "H A Y A H T F C"),
         ("жұмыс", "J U M F S"), ("әке", "' K E"), ("өрік", "; R I K"),
         ("үлгі", "[ L G I"), ("қаһарман", "H A @H A R M A N"),
-        ("фильм", "@F Z L @B M"), ("объект", "O B @V E K T"),
-        ("щётка", "@X @O T K A"), ("цирк", "@C Z R K"),
+        ("объект", "O B @V E K T"), ("щётка", "@X @O T K A"),
         ("юань", "@W A N @B"), ("экран", "@E K R A N"),
         ("аяқ", "A ] H"), ("чех", "@J E \\"),
     )
+    recipes += {
+        "qwertz": (
+            ("Қазақстан", "^H A Y A H S T A N"), ("қазақтың", "H A Y A H T F C"),
+            ("фильм", "@F Z L @B M"), ("цирк", "@C Z R K"),
+            ("киім", "K Z I M"), ("биік", "B Z I K"), ("жиі", "J Z I"),
+            ("қиын", "H Z F N"), ("сыйлық", "S F ` L F H"), ("вода", "V O D A"),
+        ),
+        "qwerty": (
+            ("Қазақстан", "^H A Z A H S T A N"), ("қазақтың", "H A Z A H T F C"),
+            ("фильм", "@F V L @B M"), ("цирк", "@C V R K"),
+            ("киім", "K V I M"), ("биік", "B V I K"), ("жиі", "J V I"),
+            ("қиын", "H V F N"), ("сыйлық", "S F Y L F H"), ("вода", "` O D A"),
+            ("киім", "K @I I M"), ("биік", "B @I I K"), ("жиі", "J @I I"),
+            ("қиын", "H @I F N"), ("ИІ", "@^I ^I"),
+        ),
+    }[variant.slug]
     for word, recipe in recipes:
         typed = []
         for stroke in recipe.split():
-            modifiers = frozenset({"option"}) if stroke.startswith("@") else frozenset({"shift"}) if stroke.startswith("^") else frozenset()
-            typed.append(keyboard.outputs(layout, modifiers).get(KEY_CODES[stroke.lstrip("@^")], ""))
-        require("".join(typed) == word, f"{layout.label}: sample {word!r} produced {''.join(typed)!r}")
+            modifiers = frozenset({"@": "option", "^": "shift"}[prefix] for prefix in stroke[:-1])
+            key = stroke[-1]
+            code = 93 if layout.is_jis and key == "`" and "option" not in modifiers else KEY_CODES[key]
+            typed.append(keyboard.outputs(layout, modifiers).get(code, ""))
+        require("".join(typed) == word, f"{variant.name}, {layout.label}: sample {word!r} produced {''.join(typed)!r}")
 
 
-def check_validator_regressions(keyboard):
+def check_validator_regressions(keyboard, variant):
     """Prove that previously hidden defects fail, without modifying any files."""
     main_layout = keyboard.layouts[0]
     jis_layout = next(layout for layout in keyboard.layouts if layout.is_jis)
@@ -335,7 +402,7 @@ def check_validator_regressions(keyboard):
 
     def must_fail(root, expected):
         try:
-            check_layout(Keyboard(root))
+            check_layout(Keyboard(root), variant)
         except LayoutError as error:
             require(expected in str(error), f"Regression failed for the wrong reason: {error}")
         else:
@@ -362,15 +429,94 @@ def check_validator_regressions(keyboard):
     ET.SubElement(caps_map, "key", code="0", output="A")
     must_fail(wrong_caps, "physical A")
 
+    if variant.slug == "qwerty":
+        missing_alias = copy.deepcopy(keyboard.root)
+        option_map = selected_element(missing_alias, main_layout, frozenset({"option"}))
+        old = option_map.find("key[@code='34']")
+        if old is not None:
+            option_map.remove(old)
+        ET.SubElement(option_map, "key", code="34", output="і")
+        must_fail(missing_alias, "physical I")
+
+
+def check_bundle_metadata(loaded):
+    """Keep both input sources independently installable and identifiable."""
+    identities = {"bundle ID": [], "input-source ID": [], "name": [], "keyboard ID": []}
+    for variant, keyboard in loaded:
+        with (variant.contents / "Info.plist").open("rb") as source:
+            info = plistlib.load(source)
+        with (variant.contents / "version.plist").open("rb") as source:
+            version = plistlib.load(source)
+        expected = {
+            "CFBundleIdentifier": variant.source_id,
+            "CFBundleName": variant.name,
+            "CFBundleVersion": RELEASE_VERSION,
+            "CFBundleShortVersionString": RELEASE_VERSION,
+            "CFBundlePackageType": "BNDL",
+        }
+        for key, value in expected.items():
+            require(info.get(key) == value, f"{variant.name}: Info.plist {key} must be {value!r}")
+        kl_key = f"KLInfo_{variant.name}"
+        require({key for key in info if key.startswith("KLInfo_")} == {kl_key},
+                f"{variant.name}: KLInfo entry does not match the resource name")
+        source_info = info[kl_key]
+        require(source_info.get("TISInputSourceID") == variant.source_id,
+                f"{variant.name}: input-source ID does not match bundle ID")
+        require(source_info.get("TISIntendedLanguage") == "kk", f"{variant.name}: input-source language must be kk")
+        require(source_info.get("TICapsLockLanguageSwitchCapable") is False,
+                f"{variant.name}: Caps Lock must capitalize, not switch language")
+        for key, value in {"ProjectName": variant.name, "SourceVersion": RELEASE_VERSION, "BuildVersion": "3"}.items():
+            require(version.get(key) == value, f"{variant.name}: version.plist {key} must be {value!r}")
+        resources = variant.contents / "Resources"
+        icon = resources / f"{variant.name}.icns"
+        require(icon.is_file() and icon.stat().st_size > 0, f"{variant.name}: missing matching icon resource")
+        require({path.name for path in resources.glob("*.keylayout")} == {variant.keylayout.name},
+                f"{variant.name}: bundle must contain only its own keylayout resource")
+        require({path.name for path in resources.glob("*.icns")} == {icon.name},
+                f"{variant.name}: bundle must contain only its own icon resource")
+        strings = (resources / "en.lproj" / "InfoPlist.strings").read_bytes()
+        encoding = "utf-16" if strings.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+        localized_names = re.findall(r'"([^"\\]+)"\s*=\s*"([^"\\]+)"\s*;', strings.decode(encoding))
+        require(localized_names == [(variant.name, variant.name)],
+                f"{variant.name}: localized input-source name does not match its resource")
+        identities["bundle ID"].append(info["CFBundleIdentifier"])
+        identities["input-source ID"].append(source_info["TISInputSourceID"])
+        identities["name"].append(keyboard.root.get("name"))
+        identities["keyboard ID"].append(int(keyboard.root.get("id")))
+    for kind, values in identities.items():
+        require(len(set(values)) == len(loaded), f"Variants share the same {kind}")
+
+
+def check_shortcut_equivalence(loaded):
+    """Changing text positions must preserve every Command/Control key output."""
+    _, reference = loaded[0]
+    reference_routes = {(layout.first, layout.last): layout for layout in reference.layouts}
+    for variant, keyboard in loaded[1:]:
+        for layout in keyboard.layouts:
+            original = reference_routes[(layout.first, layout.last)]
+            for modifiers in ALL_MODIFIERS:
+                if not modifiers.intersection(("command", "control", "rightControl")):
+                    continue
+                expected = reference.outputs(original, modifiers)
+                actual = keyboard.outputs(layout, modifiers)
+                changed = sorted(code for code in expected.keys() | actual.keys()
+                                 if expected.get(code) != actual.get(code))
+                require(not changed,
+                        f"{variant.name}, {layout.label}: shortcut outputs changed for key codes {changed}")
+
 
 def main():
-    keyboard = Keyboard.from_text(KEYLAYOUT.read_text(encoding="utf-8"))
-    check_layout(keyboard)
-    check_validator_regressions(keyboard)
-    profiles = {(layout.map_set, layout.modifier_map) for layout in keyboard.layouts}
-    print(f"OK: 42/42 lowercase and uppercase letters across {len(keyboard.layouts)} hardware routes ({len(profiles)} effective profiles).")
+    loaded = [(variant, Keyboard.from_text(variant.keylayout.read_text(encoding="utf-8"))) for variant in VARIANTS]
+    for variant, keyboard in loaded:
+        check_layout(keyboard, variant)
+        check_validator_regressions(keyboard, variant)
+        profiles = {(layout.map_set, layout.modifier_map) for layout in keyboard.layouts}
+        print(f"OK {variant.name}: 42/42 lowercase and uppercase letters across {len(keyboard.layouts)} hardware routes ({len(profiles)} effective profiles).")
+    check_bundle_metadata(loaded)
+    check_shortcut_equivalence(loaded)
     print(f"Checked {len(ALL_MODIFIERS)} modifier combinations per route, punctuation, JIS extras, shortcuts, and sample words.")
-    print("Regression checks rejected duplicate keys, a hardware override, and incorrect Caps Lock output.")
+    print("Regression checks rejected duplicate keys, a hardware override, incorrect Caps Lock output, and a missing QWERTY и alias.")
+    print(f"Both bundles have unique names and IDs, matching resources, and consistent {RELEASE_VERSION} metadata.")
 
 
 if __name__ == "__main__":
